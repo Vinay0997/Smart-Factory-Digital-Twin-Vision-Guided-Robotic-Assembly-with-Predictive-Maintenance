@@ -1,0 +1,85 @@
+{
+  "connectionName": "SmartFactory_OPCUA_Server",
+  "description": "OPC-UA connection from Ignition Gateway to Factory I/O / PLC simulation layer",
+  "endpointUrl": "opc.tcp://localhost:4840",
+  "securityPolicy": "None",
+  "securityMode": "None",
+  "authentication": {
+    "type": "anonymous"
+  },
+  "connectionSettings": {
+    "enabled": true,
+    "subscriptionDefaultRateMs": 250,
+    "sessionTimeoutMs": 60000,
+    "keepAliveIntervalMs": 5000,
+    "requestTimeoutMs": 10000
+  },
+  "tagProvider": "SmartFactoryTags",
+  "browseRootNode": "ns=2;s=FactoryIO",
+  "importedTags": [
+    {
+      "name": "Conveyor_Running",
+      "nodeId": "ns=2;s=FactoryIO.Conveyor.Running",
+      "dataType": "Boolean",
+      "tagGroup": "default",
+      "scanRateMs": 250
+    },
+    {
+      "name": "Part_Present_Sensor",
+      "nodeId": "ns=2;s=FactoryIO.Sensors.PartPresent",
+      "dataType": "Boolean",
+      "tagGroup": "default",
+      "scanRateMs": 100
+    },
+    {
+      "name": "Part_Counter_Total",
+      "nodeId": "ns=2;s=FactoryIO.Counters.TotalParts",
+      "dataType": "Int32",
+      "tagGroup": "default",
+      "scanRateMs": 500
+    },
+    {
+      "name": "Part_Counter_Rejected",
+      "nodeId": "ns=2;s=FactoryIO.Counters.RejectedParts",
+      "dataType": "Int32",
+      "tagGroup": "default",
+      "scanRateMs": 500
+    },
+    {
+      "name": "EStop_Active",
+      "nodeId": "ns=2;s=FactoryIO.Safety.EStopActive",
+      "dataType": "Boolean",
+      "tagGroup": "fast",
+      "scanRateMs": 100
+    },
+    {
+      "name": "Vision_Inspection_Result",
+      "nodeId": "ns=2;s=VisionBridge.Inspection.Result",
+      "dataType": "String",
+      "tagGroup": "default",
+      "scanRateMs": 100
+    },
+    {
+      "name": "OEE_Overall",
+      "nodeId": "ns=2;s=Ignition.OEE.Overall",
+      "dataType": "Float",
+      "tagGroup": "slow",
+      "scanRateMs": 1000
+    },
+    {
+      "name": "Predictive_Maintenance_Alert",
+      "nodeId": "ns=2;s=CloudBridge.PdM.AlertLevel",
+      "dataType": "String",
+      "tagGroup": "slow",
+      "scanRateMs": 5000
+    }
+  ],
+  "diagnostics": {
+    "loggingLevel": "INFO",
+    "reconnectPolicy": {
+      "enabled": true,
+      "maxRetries": 10,
+      "retryDelayMs": 3000
+    }
+  }
+}
