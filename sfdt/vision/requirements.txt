@@ -1,6 +1,0 @@
-opencv-python==4.10.0.84
-numpy==1.26.4
-paho-mqtt==1.6.1
-influxdb-client==1.44.0
-ultralytics==8.2.0
-awsiotsdk==1.21.5
