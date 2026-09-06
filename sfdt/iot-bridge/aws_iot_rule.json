@@ -1,0 +1,70 @@
+{
+  "ruleName": "SmartFactoryTelemetryRule",
+  "topicRulePayload": {
+    "sql": "SELECT *, topic() AS source_topic, timestamp() AS ingest_ts FROM 'smart-factory/factory/vision/inspection_result'",
+    "description": "Routes vision inspection results forwarded from the local MQTT bridge (mqtt_publisher.py) into IoT Core-connected storage and downstream Lambda processing for predictive maintenance scoring.",
+    "awsIotSqlVersion": "2016-03-23",
+    "ruleDisabled": false,
+    "actions": [
+      {
+        "republish": {
+          "roleArn": "arn:aws:iam::<ACCOUNT_ID>:role/SmartFactoryIoTRepublishRole",
+          "topic": "smart-factory/processed/vision_result",
+          "qos": 1
+        }
+      },
+      {
+        "lambda": {
+          "functionArn": "arn:aws:lambda:us-east-1:<ACCOUNT_ID>:function:smart-factory-influx-forwarder"
+        }
+      },
+      {
+        "s3": {
+          "roleArn": "arn:aws:iam::<ACCOUNT_ID>:role/SmartFactoryIoTS3Role",
+          "bucketName": "smart-factory-telemetry-archive",
+          "key": "vision-results/${topic()}/${timestamp()}.json",
+          "cannedAcl": "PRIVATE"
+        }
+      }
+    ],
+    "errorAction": {
+      "cloudwatchLogs": {
+        "roleArn": "arn:aws:iam::<ACCOUNT_ID>:role/SmartFactoryIoTErrorLogRole",
+        "logGroupName": "/aws/iot/smart-factory-rule-errors"
+      }
+    }
+  },
+  "additionalRules": [
+    {
+      "ruleName": "SmartFactoryOEEMetricsRule",
+      "sql": "SELECT * FROM 'smart-factory/factory/plc/oee_metrics'",
+      "description": "Routes OEE and PLC status telemetry for cloud-side dashboards and long-term archival.",
+      "actions": [
+        {
+          "lambda": {
+            "functionArn": "arn:aws:lambda:us-east-1:<ACCOUNT_ID>:function:smart-factory-influx-forwarder"
+          }
+        }
+      ]
+    },
+    {
+      "ruleName": "SmartFactoryPredictiveMaintenanceRule",
+      "sql": "SELECT * FROM 'smart-factory/factory/plc/conveyor_status' WHERE vibration_rms > 3.5 OR cycle_time_drift_pct > 10",
+      "description": "Filters telemetry crossing predictive-maintenance thresholds and triggers a maintenance alert Lambda that writes to the maintenance_alerts table in PostgreSQL and publishes to Predictive_Maintenance_Alert.",
+      "actions": [
+        {
+          "lambda": {
+            "functionArn": "arn:aws:lambda:us-east-1:<ACCOUNT_ID>:function:smart-factory-pdm-alert-handler"
+          }
+        }
+      ]
+    }
+  ],
+  "setup_notes": [
+    "Replace <ACCOUNT_ID> with your AWS account ID before applying with `aws iot create-topic-rule`.",
+    "Create the referenced IAM roles (SmartFactoryIoTRepublishRole, SmartFactoryIoTS3Role, SmartFactoryIoTErrorLogRole) with least-privilege policies scoped to the specific S3 bucket, Lambda function, and CloudWatch log group.",
+    "The 'smart-factory/' topic prefix matches AWSIoTForwarder.forward() in iot-bridge/mqtt_publisher.py, which republishes local MQTT topics under this prefix.",
+    "smart-factory-influx-forwarder and smart-factory-pdm-alert-handler are placeholder Lambda function names; implement them separately or route directly to Kinesis/Timestream if preferred over Lambda.",
+    "AWS IoT Core free tier covers a limited number of messages/month, sufficient for a portfolio demo but not sustained production load."
+  ]
+}

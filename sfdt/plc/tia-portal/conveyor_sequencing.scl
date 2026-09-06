@@ -1,0 +1,130 @@
+// ============================================================================
+// FB_ConveyorSequencing
+// Siemens SCL - TIA Portal (S7-1500)
+// Smart Factory Digital Twin - Conveyor sequencing, robotic cell interlocking,
+// and safety zone management
+//
+// Environment mapping (matches opcua-tag-map.csv):
+//   Conveyor_Running          -> %Q0.0
+//   Part_Present_Sensor       -> %I0.1
+//   EStop_Active              -> %I0.7
+//   Safety_Zone_Clear         -> %I0.6
+//   Reject_Arm_Trigger        -> %Q0.3
+//   Part_Counter_Total        -> %MW20
+//   Part_Counter_Rejected     -> %MW22
+//   Machine_Cycle_Time        -> %MW30
+// ============================================================================
+
+FUNCTION_BLOCK "FB_ConveyorSequencing"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+VAR_INPUT
+    EStop_Active          : Bool;    // Hardwired E-stop status, %I0.7
+    Safety_Zone_Clear      : Bool;    // Light curtain / interlock clear, %I0.6
+    Part_Present_Sensor     : Bool;    // Photoelectric sensor at pick station, %I0.1
+    Robot_Cell_Ready        : Bool;    // From ROS2 bridge via OPC-UA
+    Vision_Inspection_Result: String;  // "pass" / "fail_misaligned" / "fail_defect" / "no_part_detected"
+    Conveyor_Speed_Setpoint : Real;    // m/s, operator/SCADA adjustable
+    Start_Command           : Bool;    // From SCADA HMI start button
+    Stop_Command            : Bool;    // From SCADA HMI stop button
+END_VAR
+
+VAR_OUTPUT
+    Conveyor_Running        : Bool;    // %Q0.0
+    Reject_Arm_Trigger      : Bool;    // %Q0.3
+    Part_Counter_Total      : Int;     // %MW20
+    Part_Counter_Rejected   : Int;     // %MW22
+    Machine_Cycle_Time      : Real;    // %MW30, seconds
+    Fault_Code              : Int;     // 0 = no fault, see fault table below
+END_VAR
+
+VAR
+    state                   : Int := 0;   // 0=IDLE 1=RUNNING 2=INSPECTING 3=REJECTING 4=FAULT
+    cycleTimer              : TON;
+    rejectTimer             : TON;
+    prevPartPresent         : Bool := FALSE;
+    cycleStartTime          : Real := 0.0;
+END_VAR
+
+// ----------------------------------------------------------------------------
+// Fault codes:
+//   1 = E-Stop active
+//   2 = Safety zone breached
+//   3 = Robot cell not ready during active cycle
+// ----------------------------------------------------------------------------
+
+// --- Safety interlock (highest priority, per ISO 10218) ---
+IF EStop_Active OR NOT Safety_Zone_Clear THEN
+    Conveyor_Running   := FALSE;
+    Reject_Arm_Trigger := FALSE;
+    state := 4; // FAULT
+    Fault_Code := IF EStop_Active THEN 1 ELSE 2 END_IF;
+ELSE
+    IF Fault_Code <> 0 AND NOT EStop_Active AND Safety_Zone_Clear THEN
+        Fault_Code := 0;
+        state := 0; // return to IDLE once faults clear, requires Start_Command to resume
+    END_IF;
+END_IF;
+
+// --- Main sequencing state machine ---
+CASE state OF
+
+    0: // IDLE
+        Conveyor_Running := FALSE;
+        Reject_Arm_Trigger := FALSE;
+        IF Start_Command AND NOT EStop_Active AND Safety_Zone_Clear THEN
+            state := 1;
+            cycleStartTime := 0.0; // reset in real deployment via RUNTIME() or system clock
+        END_IF;
+
+    1: // RUNNING - conveyor active, waiting for part at pick station
+        Conveyor_Running := TRUE;
+
+        IF Stop_Command THEN
+            state := 0;
+        ELSIF Part_Present_Sensor AND NOT prevPartPresent THEN
+            // Rising edge: new part arrived at pick/vision station
+            Conveyor_Running := FALSE; // hold part for inspection
+            state := 2;
+        END_IF;
+
+    2: // INSPECTING - waiting on vision result via OPC-UA/MQTT bridge
+        IF NOT Robot_Cell_Ready THEN
+            Fault_Code := 3;
+            state := 4;
+        ELSIF Vision_Inspection_Result = 'pass' THEN
+            Part_Counter_Total := Part_Counter_Total + 1;
+            state := 1; // resume conveyor, robot handles pick-and-place downstream
+            Conveyor_Running := TRUE;
+        ELSIF Vision_Inspection_Result = 'fail_misaligned' OR Vision_Inspection_Result = 'fail_defect' THEN
+            Part_Counter_Total := Part_Counter_Total + 1;
+            Part_Counter_Rejected := Part_Counter_Rejected + 1;
+            state := 3; // trigger reject arm
+        END_IF;
+        // if 'no_part_detected', remain in state 2 and wait for next scan
+
+    3: // REJECTING - fire pneumatic reject arm for a fixed dwell time
+        Reject_Arm_Trigger := TRUE;
+        rejectTimer(IN := TRUE, PT := T#500MS);
+        IF rejectTimer.Q THEN
+            Reject_Arm_Trigger := FALSE;
+            rejectTimer(IN := FALSE);
+            state := 1;
+            Conveyor_Running := TRUE;
+        END_IF;
+
+    4: // FAULT - conveyor and reject arm forced off, handled above
+        Conveyor_Running := FALSE;
+        Reject_Arm_Trigger := FALSE;
+        // Operator must clear fault at SCADA HMI and re-issue Start_Command
+
+END_CASE;
+
+prevPartPresent := Part_Present_Sensor;
+
+// --- Cycle time tracking (simplified; use system RUNTIME/TIME in real project) ---
+cycleTimer(IN := (state = 1), PT := T#10S);
+Machine_Cycle_Time := TIME_TO_REAL(cycleTimer.ET) / 1000.0; // ms to seconds
+
+END_FUNCTION_BLOCK

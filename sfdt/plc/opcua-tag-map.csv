@@ -1,0 +1,20 @@
+tag_name,opcua_node_id,data_type,source,plc_address,description,unit,scan_rate_ms
+Conveyor_Running,ns=2;s=FactoryIO.Conveyor.Running,Boolean,FactoryIO,%Q0.0,Conveyor motor run status,,250
+Conveyor_Speed_Setpoint,ns=2;s=FactoryIO.Conveyor.SpeedSetpoint,Float,PLC,%MW10,Conveyor belt speed setpoint,m/s,250
+Part_Present_Sensor,ns=2;s=FactoryIO.Sensors.PartPresent,Boolean,FactoryIO,%I0.1,Photoelectric sensor - part detected at pick station,,100
+Part_Counter_Total,ns=2;s=FactoryIO.Counters.TotalParts,Int32,PLC,%MW20,Total parts processed since shift start,count,500
+Part_Counter_Rejected,ns=2;s=FactoryIO.Counters.RejectedParts,Int32,PLC,%MW22,Total parts rejected by vision inspection,count,500
+EStop_Active,ns=2;s=FactoryIO.Safety.EStopActive,Boolean,PLC,%I0.7,Emergency stop circuit status,,100
+Safety_Zone_Clear,ns=2;s=FactoryIO.Safety.ZoneClear,Boolean,PLC,%I0.6,Light curtain / safety zone interlock clear,,100
+Robot_Cell_Ready,ns=2;s=ROS2Bridge.Robot.CellReady,Boolean,ROS2Bridge,N/A,UR10 cell ready for next pick cycle,,250
+Robot_Cycle_Active,ns=2;s=ROS2Bridge.Robot.CycleActive,Boolean,ROS2Bridge,N/A,Robot currently executing pick-and-place cycle,,250
+Vision_Inspection_Result,ns=2;s=VisionBridge.Inspection.Result,String,MQTT_Bridge,N/A,Latest inspection result: pass / fail_misaligned / fail_defect,,100
+Vision_Confidence_Score,ns=2;s=VisionBridge.Inspection.Confidence,Float,MQTT_Bridge,N/A,YOLO/CV confidence score for last inspected part,0-1,100
+Reject_Arm_Trigger,ns=2;s=FactoryIO.Actuators.RejectArm,Boolean,PLC,%Q0.3,Pneumatic reject arm actuator trigger,,100
+OEE_Availability,ns=2;s=Ignition.OEE.Availability,Float,Ignition_Calc,N/A,Calculated OEE availability metric,%,1000
+OEE_Performance,ns=2;s=Ignition.OEE.Performance,Float,Ignition_Calc,N/A,Calculated OEE performance metric,%,1000
+OEE_Quality,ns=2;s=Ignition.OEE.Quality,Float,Ignition_Calc,N/A,Calculated OEE quality metric,%,1000
+OEE_Overall,ns=2;s=Ignition.OEE.Overall,Float,Ignition_Calc,N/A,Overall OEE = Availability x Performance x Quality,%,1000
+Machine_Cycle_Time,ns=2;s=FactoryIO.Metrics.CycleTime,Float,PLC,%MW30,Time to complete one full conveyor+pick cycle,seconds,500
+Downtime_Event_Active,ns=2;s=FactoryIO.Metrics.DowntimeActive,Boolean,PLC,%MW32,Unplanned downtime flag for predictive maintenance,,1000
+Predictive_Maintenance_Alert,ns=2;s=CloudBridge.PdM.AlertLevel,String,AWS_IoT,N/A,PdM alert level from cloud analytics: normal/warning/critical,,5000

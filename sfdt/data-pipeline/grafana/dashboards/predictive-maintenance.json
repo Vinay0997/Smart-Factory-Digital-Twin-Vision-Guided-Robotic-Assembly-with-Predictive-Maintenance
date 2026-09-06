@@ -1,0 +1,110 @@
+{
+  "title": "Smart Factory - Predictive Maintenance",
+  "uid": "smart-factory-pdm",
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active Alert Level",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "normal": { "color": "green", "text": "NORMAL" } } },
+            { "type": "value", "options": { "warning": { "color": "orange", "text": "WARNING" } } },
+            { "type": "value", "options": { "critical": { "color": "red", "text": "CRITICAL" } } }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"factory_plc_oee_metrics\" and r._field == \"Predictive_Maintenance_Alert\") |> last()"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Open Maintenance Alerts",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "postgres-factory" },
+      "targets": [
+        {
+          "rawSql": "SELECT asset_name, alert_level, metric_name, metric_value, triggered_at FROM factory.maintenance_alerts WHERE acknowledged_at IS NULL ORDER BY triggered_at DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Alert Count by Asset (24h)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "postgres-factory" },
+      "targets": [
+        {
+          "rawSql": "SELECT asset_name, COUNT(*) AS alert_count FROM factory.maintenance_alerts WHERE triggered_at >= NOW() - INTERVAL '24 hours' GROUP BY asset_name ORDER BY alert_count DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Conveyor Motor Vibration (RMS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 3.5 },
+              { "color": "red", "value": 5.0 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -24h) |> filter(fn: (r) => r._measurement == \"factory_plc_conveyor_status\" and r._field == \"vibration_rms\")"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Robot Cycle Time Drift",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -24h) |> filter(fn: (r) => r._measurement == \"factory_plc_conveyor_status\" and r._field == \"Machine_Cycle_Time\")"
+        }
+      ],
+      "description": "A gradual upward trend indicates mechanical wear; sustained deviation beyond baseline triggers a predictive maintenance alert."
+    },
+    {
+      "id": 6,
+      "title": "Downtime Events Linked to Fault Codes (7d)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "postgres", "uid": "postgres-factory" },
+      "targets": [
+        {
+          "rawSql": "SELECT started_at, fault_code, fault_description, duration_seconds, resolved_by FROM factory.downtime_events WHERE started_at >= NOW() - INTERVAL '7 days' ORDER BY started_at DESC",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

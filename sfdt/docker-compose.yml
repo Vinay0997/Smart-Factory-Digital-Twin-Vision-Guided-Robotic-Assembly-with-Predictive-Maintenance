@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./iot-bridge/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUX_USER}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=smart-factory
+      - DOCKER_INFLUXDB_INIT_BUCKET=telemetry
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=production_records
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./data-pipeline/postgres/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./data-pipeline/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - influxdb
+      - postgres
+    restart: unless-stopped
+
+  mqtt-bridge:
+    build:
+      context: ./iot-bridge
+    container_name: mqtt-bridge
+    depends_on:
+      - mosquitto
+      - influxdb
+    environment:
+      - MQTT_BROKER=mosquitto
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - INFLUX_ORG=smart-factory
+      - INFLUX_BUCKET=telemetry
+      - ENABLE_AWS_FORWARDING=${ENABLE_AWS_FORWARDING:-false}
+      - AWS_IOT_ENDPOINT=${AWS_IOT_ENDPOINT}
+    restart: unless-stopped
+
+volumes:
+  influxdb-data:
+  postgres-data:
+  grafana-data:

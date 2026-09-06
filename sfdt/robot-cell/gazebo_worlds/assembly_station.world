@@ -1,0 +1,157 @@
+<?xml version="1.0" ?>
+<!--
+  assembly_station.world
+  Gazebo (gz-sim) world for the Smart Factory Digital Twin robot cell.
+
+  Contains: ground plane, sun light, a simplified conveyor belt model,
+  a pick-station table with an attached camera sensor, a reject bin,
+  and a spawn point for the UR10 arm (spawned separately via
+  factory_cell.launch.py using ros_gz_sim 'create').
+-->
+<sdf version="1.9">
+  <world name="assembly_station">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster" />
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands" />
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Conveyor belt: simplified as a static box; part motion driven by
+         the PLC/Factory I/O bridge in the full deployment, or by a
+         plugin-driven velocity in pure-Gazebo testing. -->
+    <model name="conveyor_belt">
+      <static>true</static>
+      <pose>0 0 0.4 0 0 0</pose>
+      <link name="belt_link">
+        <collision name="collision">
+          <geometry><box><size>3.0 0.6 0.1</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>3.0 0.6 0.1</size></box></geometry>
+          <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.2 0.2 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Pick station table: co-located with the conveyor_pick_point frame
+         referenced by pick_place_node -->
+    <model name="pick_station_table">
+      <static>true</static>
+      <pose>1.2 0 0.45 0 0 0</pose>
+      <link name="table_link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.5 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.5 0.5</size></box></geometry>
+          <material>
+            <ambient>0.5 0.35 0.2 1</ambient>
+            <diffuse>0.5 0.35 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Inspection camera mounted above the pick station -->
+    <model name="inspection_camera">
+      <static>true</static>
+      <pose>1.2 0 1.2 0 1.5708 0</pose>
+      <link name="camera_link">
+        <sensor name="camera_sensor" type="camera">
+          <camera>
+            <horizontal_fov>1.047</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip>
+              <near>0.1</near>
+              <far>10</far>
+            </clip>
+          </camera>
+          <always_on>true</always_on>
+          <update_rate>15</update_rate>
+          <visualize>true</visualize>
+          <topic>camera</topic>
+        </sensor>
+        <visual name="camera_visual">
+          <geometry><box><size>0.08 0.08 0.08</size></box></geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Reject bin: destination for parts flagged fail_misaligned/fail_defect -->
+    <model name="reject_bin">
+      <static>true</static>
+      <pose>1.2 -0.8 0.2 0 0 0</pose>
+      <link name="bin_link">
+        <collision name="collision">
+          <geometry><box><size>0.4 0.4 0.4</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.4 0.4</size></box></geometry>
+          <material>
+            <ambient>0.8 0.1 0.1 1</ambient>
+            <diffuse>0.8 0.1 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Sample part spawned on the conveyor for pick-and-place testing -->
+    <model name="part_001">
+      <pose>-1.0 0 0.5 0 0 0</pose>
+      <link name="part_link">
+        <inertial>
+          <mass>0.05</mass>
+        </inertial>
+        <collision name="collision">
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+          <material>
+            <ambient>0.1 0.4 0.8 1</ambient>
+            <diffuse>0.1 0.4 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

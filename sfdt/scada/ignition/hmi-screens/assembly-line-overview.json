@@ -1,0 +1,115 @@
+{
+  "view": {
+    "name": "AssemblyLineOverview",
+    "type": "perspective-view",
+    "description": "Main HMI screen: conveyor status, part counts, safety state, vision result, and live OEE tiles",
+    "params": {},
+    "root": {
+      "type": "ia.container.coord",
+      "meta": { "name": "root" },
+      "position": { "width": 1600, "height": 900 },
+      "children": [
+        {
+          "type": "ia.display.label",
+          "meta": { "name": "TitleLabel" },
+          "position": { "x": 40, "y": 20, "width": 600, "height": 40 },
+          "props": { "text": "Smart Assembly Line - Live Overview" },
+          "style": { "font-size": "24px", "font-weight": "bold" }
+        },
+        {
+          "type": "ia.display.led",
+          "meta": { "name": "ConveyorRunningLED" },
+          "position": { "x": 40, "y": 100, "width": 60, "height": 60 },
+          "props": {
+            "value": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]Conveyor_Running" } } },
+            "colorOn": "#2ECC71",
+            "colorOff": "#95A5A6"
+          }
+        },
+        {
+          "type": "ia.display.label",
+          "meta": { "name": "ConveyorLabel" },
+          "position": { "x": 110, "y": 115, "width": 200, "height": 30 },
+          "props": { "text": "Conveyor Running" }
+        },
+        {
+          "type": "ia.display.led",
+          "meta": { "name": "EStopLED" },
+          "position": { "x": 400, "y": 100, "width": 60, "height": 60 },
+          "props": {
+            "value": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]EStop_Active" } } },
+            "colorOn": "#E74C3C",
+            "colorOff": "#2ECC71"
+          }
+        },
+        {
+          "type": "ia.display.label",
+          "meta": { "name": "EStopLabel" },
+          "position": { "x": 470, "y": 115, "width": 200, "height": 30 },
+          "props": { "text": "E-Stop Active" }
+        },
+        {
+          "type": "ia.display.numeric-entry-field",
+          "meta": { "name": "PartCounterDisplay" },
+          "position": { "x": 40, "y": 200, "width": 200, "height": 50 },
+          "props": {
+            "value": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]Part_Counter_Total" } } },
+            "editable": false
+          },
+          "meta_label": "Total Parts Processed"
+        },
+        {
+          "type": "ia.display.numeric-entry-field",
+          "meta": { "name": "RejectCounterDisplay" },
+          "position": { "x": 280, "y": 200, "width": 200, "height": 50 },
+          "props": {
+            "value": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]Part_Counter_Rejected" } } },
+            "editable": false
+          },
+          "meta_label": "Total Parts Rejected"
+        },
+        {
+          "type": "ia.display.label",
+          "meta": { "name": "VisionResultDisplay" },
+          "position": { "x": 40, "y": 290, "width": 400, "height": 40 },
+          "props": {
+            "text": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]Vision_Inspection_Result" } } }
+          },
+          "meta_label": "Latest Vision Inspection Result"
+        },
+        {
+          "type": "ia.chart.gauge",
+          "meta": { "name": "OEEGauge" },
+          "position": { "x": 40, "y": 380, "width": 300, "height": 300 },
+          "props": {
+            "value": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]OEE_Overall" } } },
+            "min": 0,
+            "max": 100,
+            "units": "%",
+            "label": "Overall OEE"
+          }
+        },
+        {
+          "type": "ia.display.label",
+          "meta": { "name": "PdMAlertLabel" },
+          "position": { "x": 400, "y": 380, "width": 400, "height": 40 },
+          "props": {
+            "text": { "binding": { "type": "tag", "config": { "tagPath": "[SmartFactoryTags]Predictive_Maintenance_Alert" } } }
+          },
+          "style": {
+            "font-weight": "bold",
+            "color": {
+              "binding": {
+                "type": "expr",
+                "config": {
+                  "expression": "if({[SmartFactoryTags]Predictive_Maintenance_Alert} = 'critical', '#E74C3C', if({[SmartFactoryTags]Predictive_Maintenance_Alert} = 'warning', '#F39C12', '#2ECC71'))"
+                }
+              }
+            }
+          },
+          "meta_label": "Predictive Maintenance Alert Level"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "title": "Smart Factory - OEE Dashboard",
+  "uid": "smart-factory-oee",
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Overall OEE",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 85 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -1m) |> filter(fn: (r) => r._measurement == \"factory_plc_oee_metrics\" and r._field == \"OEE_Overall\") |> last()"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Availability / Performance / Quality",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -1m) |> filter(fn: (r) => r._measurement == \"factory_plc_oee_metrics\" and (r._field == \"OEE_Availability\" or r._field == \"OEE_Performance\" or r._field == \"OEE_Quality\")) |> last()"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "OEE Trend (6h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -6h) |> filter(fn: (r) => r._measurement == \"factory_plc_oee_metrics\" and r._field == \"OEE_Overall\")"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Parts Processed vs Rejected",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "datasource": { "type": "postgres", "uid": "postgres-factory" },
+      "targets": [
+        {
+          "rawSql": "SELECT total_parts, parts_rejected FROM factory.v_current_run_summary ORDER BY started_at DESC LIMIT 1",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Reject Rate by Cause",
+      "type": "piechart",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "datasource": { "type": "postgres", "uid": "postgres-factory" },
+      "targets": [
+        {
+          "rawSql": "SELECT inspection_status, COUNT(*) AS count FROM factory.parts WHERE inspection_status LIKE 'fail%' GROUP BY inspection_status",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Cycle Time (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -6h) |> filter(fn: (r) => r._measurement == \"factory_plc_conveyor_status\" and r._field == \"Machine_Cycle_Time\")"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Downtime Events (Today)",
+      "type": "table",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "postgres-factory" },
+      "targets": [
+        {
+          "rawSql": "SELECT started_at, fault_code, fault_description, duration_seconds FROM factory.downtime_events WHERE started_at >= NOW() - INTERVAL '24 hours' ORDER BY started_at DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Vision Confidence Score",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "influxdb", "uid": "influxdb-telemetry" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } },
+      "targets": [
+        {
+          "query": "from(bucket: \"telemetry\") |> range(start: -6h) |> filter(fn: (r) => r._measurement == \"factory_vision_inspection_result\" and r._field == \"confidence\")"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
