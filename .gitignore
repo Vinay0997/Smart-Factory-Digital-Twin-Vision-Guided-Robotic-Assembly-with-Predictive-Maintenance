@@ -1,0 +1,11 @@
+.env
+*.pem
+*.crt
+*.key
+certs/
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+runs/
+*.log
